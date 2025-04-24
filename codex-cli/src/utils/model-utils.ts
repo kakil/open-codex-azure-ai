@@ -1,7 +1,7 @@
 import type { AppConfig } from "./config";
 
 import chalk from "chalk";
-import OpenAI from "openai";
+import OpenAI, { AzureOpenAI } from "openai";
 
 const MODEL_LIST_TIMEOUT_MS = 2_000; // 2 seconds
 export const RECOMMENDED_MODELS: Array<string> = ["o4-mini", "o3"];
@@ -22,11 +22,29 @@ async function fetchModels(config: AppConfig): Promise<Array<string>> {
     return [];
   }
   try {
-    const openai = new OpenAI({
-      apiKey: config.apiKey,
-      baseURL: config.baseURL,
-    });
-    const list = await openai.models.list();
+    let client;
+    if (config.provider === "azure") {
+      // For Azure OpenAI
+      client = new AzureOpenAI({
+        apiKey: config.apiKey || "",
+        endpoint: config.baseURL || "",
+        apiVersion: "2025-01-01-preview",
+      });
+      
+      // For Azure, we'll use the deployment name as the model since model listing works differently
+      if (process.env["AZURE_OPENAI_DEPLOYMENT"]) {
+        return [process.env["AZURE_OPENAI_DEPLOYMENT"] || "o4-mini"];
+      }
+      return ["o4-mini", "o3"]; // Return default models for Azure
+    } else {
+      // For other providers, use the standard OpenAI client
+      client = new OpenAI({
+        apiKey: config.apiKey,
+        baseURL: config.baseURL,
+      });
+    }
+    
+    const list = await client.models.list();
     const models: Array<string> = [];
     for await (const model of list as AsyncIterable<{ id?: string }>) {
       if (model && typeof model.id === "string") {
@@ -117,10 +135,13 @@ export function reportMissingAPIKeyForProvider(provider: string): void {
             )} for Google Gemini models\n`;
           case "xai":
             return `- ${chalk.bold("XAI_API_KEY")} for xAI models\n`;
+          case "azure":
+            return `- ${chalk.bold("AZURE_OPENAI_KEY")} for Azure OpenAI models\n`;
           default:
             return (
               [
                 `- ${chalk.bold("OPENAI_API_KEY")} for OpenAI models`,
+                `- ${chalk.bold("AZURE_OPENAI_KEY")} for Azure OpenAI models`,
                 `- ${chalk.bold("OPENROUTER_API_KEY")} for OpenRouter models`,
                 `- ${chalk.bold(
                   "GOOGLE_GENERATIVE_AI_API_KEY",
@@ -148,6 +169,10 @@ export function reportMissingAPIKeyForProvider(provider: string): void {
           case "xai":
             return `You can create an xAI key here: ${chalk.bold(
               chalk.underline("https://console.x.ai/team/default/api-keys"),
+            )}\n`;
+          case "azure":
+            return `You can create an Azure OpenAI key in the Azure portal: ${chalk.bold(
+              chalk.underline("https://portal.azure.com/#create/Microsoft.CognitiveServicesOpenAI"),
             )}\n`;
           default:
             return "";

@@ -20,7 +20,7 @@ import {
 } from "../session.js";
 import { handleExecCommand } from "./handle-exec-command.js";
 import { randomUUID } from "node:crypto";
-import OpenAI, { APIConnectionTimeoutError } from "openai";
+import OpenAI, { APIConnectionTimeoutError, AzureOpenAI } from "openai";
 
 // Wait time before retrying after rate limit errors (ms).
 const RATE_LIMIT_RETRY_WAIT_MS = parseInt(
@@ -224,22 +224,39 @@ export class AgentLoop {
     const timeoutMs = OPENAI_TIMEOUT_MS;
     const apiKey = this.config.apiKey;
     const baseURL = this.config.baseURL;
-    this.oai = new OpenAI({
-      // The OpenAI JS SDK only requires `apiKey` when making requests against
-      // the official API.  When running unit‑tests we stub out all network
-      // calls so an undefined key is perfectly fine.  We therefore only set
-      // the property if we actually have a value to avoid triggering runtime
-      // errors inside the SDK (it validates that `apiKey` is a non‑empty
-      // string when the field is present).
-      ...(apiKey ? { apiKey } : {}),
-      ...(baseURL ? { baseURL } : {}),
-      defaultHeaders: {
-        originator: ORIGIN,
-        version: CLI_VERSION,
-        session_id: this.sessionId,
-      },
-      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
-    });
+    // Initialize the appropriate client based on the provider
+    if (this.config.provider === "azure") {
+      // For Azure OpenAI, we need to use the AzureOpenAI client with specific configuration
+      this.oai = new AzureOpenAI({
+        apiKey: apiKey || "",  // Azure requires the API key
+        endpoint: baseURL || "",  // Azure requires the endpoint
+        apiVersion: "2025-01-01-preview",  // Updated to latest API version required by newer models
+        defaultHeaders: {
+          originator: ORIGIN,
+          version: CLI_VERSION,
+          session_id: this.sessionId,
+        },
+        ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+      }) as unknown as OpenAI; // Type cast for compatibility
+    } else {
+      // For other providers, use the standard OpenAI client
+      this.oai = new OpenAI({
+        // The OpenAI JS SDK only requires `apiKey` when making requests against
+        // the official API. When running unit‑tests we stub out all network
+        // calls so an undefined key is perfectly fine. We therefore only set
+        // the property if we actually have a value to avoid triggering runtime
+        // errors inside the SDK (it validates that `apiKey` is a non‑empty
+        // string when the field is present).
+        ...(apiKey ? { apiKey } : {}),
+        ...(baseURL ? { baseURL } : {}),
+        defaultHeaders: {
+          originator: ORIGIN,
+          version: CLI_VERSION,
+          session_id: this.sessionId,
+        },
+        ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+      });
+    }
 
     setSessionId(this.sessionId);
     setCurrentModel(this.model);

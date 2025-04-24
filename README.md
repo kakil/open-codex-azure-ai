@@ -302,6 +302,7 @@ You can also define custom instructions:
 This fork of Codex supports multiple AI providers:
 
 - openai (default)
+- azure
 - gemini
 - openrouter
 - ollama
@@ -319,19 +320,50 @@ OR use the `--provider` flag. eg. `codex --provider gemini`
 
 Here's a list of all the providers and their default models:
 
-| Provider   | Environment Variable Required | Default Agentic Model        | Default Full Context Model |
-| ---------- | ----------------------------- | ---------------------------- | -------------------------- |
-| openai     | OPENAI_API_KEY                | o4-mini                      | o3                         |
-| gemini     | GOOGLE_GENERATIVE_AI_API_KEY  | gemini-2.5-pro-preview-03-25 | gemini-2.0-flash           |
-| openrouter | OPENROUTER_API_KEY            | openai/o4-mini               | openai/o3                  |
-| ollama     | Not required                  | User must specify            | User must specify          |
-| xai        | XAI_API_KEY                   | grok-3-mini-beta             | grok-3-beta                |
+| Provider   | Environment Variable Required    | Default Agentic Model        | Default Full Context Model |
+| ---------- | -------------------------------- | ---------------------------- | -------------------------- |
+| openai     | OPENAI_API_KEY                   | o4-mini                      | o3                         |
+| azure      | AZURE_OPENAI_KEY                 | o4-mini                      | o3                         |
+| gemini     | GOOGLE_GENERATIVE_AI_API_KEY     | gemini-2.5-pro-preview-03-25 | gemini-2.0-flash           |
+| openrouter | OPENROUTER_API_KEY               | openai/o4-mini               | openai/o3                  |
+| ollama     | Not required                     | User must specify            | User must specify          |
+| xai        | XAI_API_KEY                      | grok-3-mini-beta             | grok-3-beta                |
 
 #### When using an alternative provider, make sure you have the correct environment variables set.
 
 ```bash
+# For OpenAI
+export OPENAI_API_KEY="your-openai-api-key-here"
+
+# For Azure OpenAI
+export AZURE_OPENAI_KEY="your-azure-openai-key-here"
+export AZURE_OPENAI_ENDPOINT="https://your-resource-name.openai.azure.com"
+export AZURE_OPENAI_DEPLOYMENT="your-deployment-name" # defaults to o4-mini if not specified
+
+# For Gemini
 export GOOGLE_GENERATIVE_AI_API_KEY="your-gemini-api-key-here"
 ```
+
+### Using Azure OpenAI
+
+To quickly set up Azure OpenAI integration, you can use the provided setup script:
+
+```bash
+# Run the setup script
+./scripts/setup-azure.sh
+
+# Source your shell configuration to load the new environment variables
+source ~/.bashrc  # or ~/.zshrc if using zsh
+```
+
+The script will:
+1. Prompt for your Azure OpenAI API key
+2. Ask for your Azure OpenAI endpoint URL
+3. Request your deployment name (defaults to o4-mini)
+4. Configure environment variables in your shell profile
+5. Create a test script to verify the configuration
+
+Once configured, Open Codex will automatically detect and use Azure OpenAI when the `AZURE_OPENAI_KEY` environment variable is present.
 
 ---
 

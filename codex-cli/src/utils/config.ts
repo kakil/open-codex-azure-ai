@@ -1,10 +1,6 @@
 // NOTE: We intentionally point the TypeScript import at the source file
 // (`./auto-approval-mode.ts`) instead of the emitted `.js` bundle.  This makes
-// the module resolvable when the project is executed via `ts-node`, which
-// resolves *source* paths rather than built artefacts.  During a production
-// build the TypeScript compiler will automatically rewrite the path to
-// `./auto-approval-mode.js`, so the change is completely transparent for the
-// compiled `dist/` output used by the published CLI.
+// the module resolvable when the project is executed via `ts-node`...
 
 import type { FullAutoErrorMode } from "./auto-approval-mode.js";
 
@@ -23,20 +19,24 @@ export const CONFIG_DIR = join(homedir(), ".codex");
 export const CONFIG_JSON_FILEPATH = join(CONFIG_DIR, "config.json");
 export const CONFIG_YAML_FILEPATH = join(CONFIG_DIR, "config.yaml");
 export const CONFIG_YML_FILEPATH = join(CONFIG_DIR, "config.yml");
-
-// Keep the original constant name for backward compatibility, but point it at
-// the default JSON path. Code that relies on this constant will continue to
-// work unchanged.
 export const CONFIG_FILEPATH = CONFIG_JSON_FILEPATH;
 export const INSTRUCTIONS_FILEPATH = join(CONFIG_DIR, "instructions.md");
 
 export const OPENAI_TIMEOUT_MS =
   parseInt(process.env["OPENAI_TIMEOUT_MS"] || "0", 10) || undefined;
 
+// ----------------------------------------------------------
+// Provider + API key configuration
+// ----------------------------------------------------------
 export let DEFAULT_PROVIDER = "openai";
+// If an Azure key is set, default to Azure
+if (process.env["AZURE_OPENAI_KEY"]) {
+  DEFAULT_PROVIDER = "azure";
+}
+
 export let API_KEY = "";
 
-// Gracefully fallback to a provider if we have a missing API key.
+// Gracefully fallback if missing
 if (!process.env["OPENAI_API_KEY"]) {
   if (process.env["GOOGLE_GENERATIVE_AI_API_KEY"]) {
     DEFAULT_PROVIDER = "gemini";
@@ -50,46 +50,34 @@ if (!process.env["OPENAI_API_KEY"]) {
 function getAPIKeyForProviderOrExit(provider: string): string {
   switch (provider) {
     case "openai":
-      if (process.env["OPENAI_API_KEY"]) {
-        return process.env["OPENAI_API_KEY"];
-      }
-      reportMissingAPIKeyForProvider(provider);
-      process.exit(1);
+      if (process.env["OPENAI_API_KEY"]) {return process.env["OPENAI_API_KEY"];}
+      break;
+    case "azure":
+      if (process.env["AZURE_OPENAI_KEY"]) {return process.env["AZURE_OPENAI_KEY"];}
       break;
     case "gemini":
-      if (process.env["GOOGLE_GENERATIVE_AI_API_KEY"]) {
-        return process.env["GOOGLE_GENERATIVE_AI_API_KEY"];
-      }
-      reportMissingAPIKeyForProvider(provider);
-      process.exit(1);
+      if (process.env["GOOGLE_GENERATIVE_AI_API_KEY"]) {return process.env["GOOGLE_GENERATIVE_AI_API_KEY"];}
       break;
     case "openrouter":
-      if (process.env["OPENROUTER_API_KEY"]) {
-        return process.env["OPENROUTER_API_KEY"];
-      }
-      reportMissingAPIKeyForProvider(provider);
-      process.exit(1);
+      if (process.env["OPENROUTER_API_KEY"]) {return process.env["OPENROUTER_API_KEY"];}
       break;
     case "ollama":
-      // Ollama doesn't require an API key but the openai client requires one
       return "ollama";
     case "xai":
-      if (process.env["XAI_API_KEY"]) {
-        return process.env["XAI_API_KEY"];
-      }
-      reportMissingAPIKeyForProvider(provider);
-      process.exit(1);
+      if (process.env["XAI_API_KEY"]) {return process.env["XAI_API_KEY"];}
       break;
-    default:
-      reportMissingAPIKeyForProvider("");
-      process.exit(1);
+    default: { throw new Error('default case') }
   }
+  reportMissingAPIKeyForProvider(provider);
+  process.exit(1);
 }
 
 function baseURLForProvider(provider: string): string {
   switch (provider) {
     case "openai":
       return "https://api.openai.com/v1";
+    case "azure":
+      return process.env["AZURE_OPENAI_ENDPOINT"] ?? "";
     case "ollama":
       return process.env["OLLAMA_BASE_URL"] ?? "http://localhost:11434/v1";
     case "gemini":
@@ -99,41 +87,25 @@ function baseURLForProvider(provider: string): string {
     case "xai":
       return "https://api.x.ai/v1";
     default:
-      // TODO throw?
       return "";
   }
 }
 
-function defaultModelsForProvider(provider: string): {
-  agentic: string;
-  fullContext: string;
-} {
+function defaultModelsForProvider(provider: string): { agentic: string; fullContext: string } {
   switch (provider) {
     case "openai":
-      return {
-        agentic: "o4-mini",
-        fullContext: "o3",
-      };
+      return { agentic: "o4-mini", fullContext: "o3" };
+    case "azure":
+      const dep = process.env["AZURE_OPENAI_DEPLOYMENT"] ?? "o4-mini";
+      return { agentic: dep, fullContext: dep };
     case "gemini":
-      return {
-        agentic: "gemini-2.5-pro-preview-03-25",
-        fullContext: "gemini-2.0-flash",
-      };
+      return { agentic: "gemini-2.5-pro-preview-03-25", fullContext: "gemini-2.0-flash" };
     case "openrouter":
-      return {
-        agentic: "openai/o4-mini",
-        fullContext: "openai/o3",
-      };
+      return { agentic: "openai/o4-mini", fullContext: "openai/o3" };
     case "xai":
-      return {
-        agentic: "grok-3-mini-beta",
-        fullContext: "grok-3-beta",
-      };
+      return { agentic: "grok-3-mini-beta", fullContext: "grok-3-beta" };
     default:
-      return {
-        agentic: "",
-        fullContext: "",
-      };
+      return { agentic: "", fullContext: "" };
   }
 }
 
