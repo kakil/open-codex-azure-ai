@@ -3,12 +3,18 @@
 
 <p align="center"><code>npm i -g open-codex</code></p>
 
-> **Important Note**: This is a fork of the [original OpenAI Codex CLI](https://github.com/openai/codex) with expanded model support and changed installation instructions. The main differences in this fork are:
->
-> - Support for multiple AI providers (OpenAI, Gemini, OpenRouter, Ollama)
-> - Uses the [Chat Completion API instead of the Responses API](https://platform.openai.com/docs/guides/responses-vs-chat-completions) which allows us to support any openai compatible provider and model.
-> - All other functionality remains similar to the original project
-> - You can install this fork globally with `npm i -g open-codex`
+> **About this fork – built on the shoulders of giants**  
+> This repository begins with [@ymichael’s **open-codex**](https://github.com/ymichael/open-codex)—itself a fork of the original [**OpenAI Codex CLI**](https://github.com/openai/codex)—and adds first-class **Azure OpenAI** support while preserving all existing functionality.
+
+### What’s new in this fork
+
+- **AzureOpenAI client integration** using the `2025-01-01-preview` API, with automatic provider detection.  
+- **`scripts/setup-azure.sh`** wizard: prompts for endpoint, deployment name, and API key, writes them to your shell profile + `.env`, and generates a quick-test script.  
+- Enhanced **`model-utils.ts`** for Azure-specific errors and graceful fall-backs.  
+- Expanded **README** with step-by-step Azure setup and usage instructions.  
+
+Everything else behaves just like the upstream project—now with a seamless Azure on-ramp.
+
 
 ---
 
